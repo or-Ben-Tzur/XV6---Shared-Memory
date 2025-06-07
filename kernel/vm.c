@@ -6,6 +6,8 @@
 #include "defs.h"
 #include "fs.h"
 
+// this file contains the code that manages virtual memory
+
 /*
  * the kernel's page table.
  */
