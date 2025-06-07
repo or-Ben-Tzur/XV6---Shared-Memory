@@ -5,6 +5,7 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "proc.h" 
 
 // this file contains the code that manages virtual memory
 
@@ -439,3 +440,50 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+/*
+param:
+    src_proc is the source process
+    dst_proc is the destination process
+    src_va is the virtual address in the source process
+    size is the number of bytes to map 
+returns:
+  the virtual address in the destination process where that corresponds to the source address in the source
+  process
+*/
+uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size){
+  uint64 dst_va = 0;
+  pte_t *pte;
+  uint64 pa;
+  uint64 new_size = dst_proc->sz + PGROUNDUP(size);
+
+  // Check if the source virtual address is valid and size is non-zero
+  if(src_va >= MAXVA || size == 0)
+    return 0;
+
+  // find the address of the PTE in the source process page table
+  pte = walk(src_proc->pagetable, src_va, 0);
+
+  // Check if the PTE exists and is valid
+  if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
+    return 0;
+
+  // TODO: check if we need to rounddown pte
+
+  // Get the physical address from the PTE
+  pa = PTE2PA(*pte);
+
+
+  dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U);
+  
+  if(dst_va == 0)
+    return 0;
+
+  if(mappages(dst_proc->pagetable, dst_va, size, pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0){
+    uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 1);
+    return 0;
+  }
+
+  return dst_va;
+}
+  
