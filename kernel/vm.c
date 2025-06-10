@@ -487,6 +487,8 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 1);
     return 0;
   }
+  
+  dst_proc->sz = new_size; // update the size of the destination process
 
   return dst_va;
 }
