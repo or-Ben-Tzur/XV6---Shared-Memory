@@ -474,7 +474,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   pa = PTE2PA(*pte);
 
 
-  dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U);
+  dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U); //implement here, copy flags from source
   
   if(dst_va == 0)
     return 0;
