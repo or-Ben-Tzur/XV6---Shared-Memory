@@ -484,7 +484,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   //dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U); //implement here, copy flags from source
 
   if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){
-    uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 1);
+    uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 0);
     return 0;
   }
   
@@ -492,4 +492,29 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
 
   return dst_va;
 }
+
+
+/*
+unmap the shared memory from the destination process
+param:
+  p     destination process
+  addr  virtual adress to unmap
+  size  everyone knows what size means
+returns 0 on success and -1 on failure
+*/ 
+
+uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size){
+  pte_t *pte;
+
+  pte = walk(p->pagetable, addr, 0);
+
+  //check mapping exists and shared
+  if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_S) == 0  || (*pte & PTE_U) == 0 ) //should we remove PTE_U?
+    return -1;
+
+  //page align addr?
   
+  uvmunmap(p->pagetable, addr , size / PGSIZE, 0); 
+
+
+}
