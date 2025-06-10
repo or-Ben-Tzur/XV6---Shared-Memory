@@ -454,8 +454,8 @@ returns:
 uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size){
   uint64 dst_va = 0;
   pte_t *pte;
-  uint64 pa;
-  uint64 new_size = dst_proc->sz + PGROUNDUP(size);
+  uint64 pa , old_size, new_size, dst_va;
+  int perms;//combine src permissions and PTE_S
 
   // Check if the source virtual address is valid and size is non-zero
   if(src_va >= MAXVA || size == 0)
@@ -468,18 +468,22 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
     return 0;
 
-  // TODO: check if we need to rounddown pte
+  // TODO: check if we need to rounddown pte or pa 
+
+  perms = PTE_FLAGS(*pte) & (PTE_R | PTE_W | PTE_X | PTE_U); // get the permissions from the source PTE
+  perms = perms | PTE_S; // add the shared flag
 
   // Get the physical address from the PTE
   pa = PTE2PA(*pte);
 
+  size = PGROUNDUP(size);
+  old_size = dst_proc->sz;
+  new_size = old_size + size;
+  dst_va = old_size;
 
-  dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U); //implement here, copy flags from source
-  
-  if(dst_va == 0)
-    return 0;
+  //dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U); //implement here, copy flags from source
 
-  if(mappages(dst_proc->pagetable, dst_va, size, pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0){
+  if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 1);
     return 0;
   }
