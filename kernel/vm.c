@@ -186,7 +186,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
-    if(do_free){
+    if(do_free && !(*pte & PTE_S)) {// if the page is owned by the process
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
@@ -462,7 +462,9 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
     return 0;
 
   // find the address of the PTE in the source process page table
+  acquire(&src_proc->lock); // acquire the lock for the source process
   pte = walk(src_proc->pagetable, src_va, 0);
+  release(&src_proc->lock); // release the lock for the source process
 
   // Check if the PTE exists and is valid
   if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
@@ -481,14 +483,17 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   new_size = old_size + size;
   dst_va = old_size;
 
-  //dst_va = uvmalloc(dst_proc->pagetable, dst_proc->sz, size, PTE_R | PTE_W | PTE_X | PTE_U); //implement here, copy flags from source
-
-  if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){
+  //aquire the lock for the destination process
+  acquire(&dst_proc->lock);
+  if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){//check if the if statement is needed
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 0);
+    release(&dst_proc->lock); // release the lock if mapping fails
     return 0;
   }
-  
   dst_proc->sz = new_size; // update the size of the destination process
+  release(&dst_proc->lock); // release the lock
+
+  
 
   return dst_va;
 }
@@ -503,18 +508,28 @@ param:
 returns 0 on success and -1 on failure
 */ 
 
-uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size){
-  pte_t *pte;
+uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size) {
+  uint64 start = PGROUNDDOWN(addr);
+  uint64 end = PGROUNDUP(addr + size);
+  int npages = (end - start) / PGSIZE;
 
-  pte = walk(p->pagetable, addr, 0);
+  for(uint64 a = start; a < end; a += PGSIZE){
+      acquire(&p->lock); // acquire the lock for the process
+      pte_t *pte = walk(p->pagetable, a, 0);
+      release(&p->lock); // release the lock for the process
+      if(!pte || !(*pte & PTE_V) || !(*pte & PTE_S) || !(*pte & PTE_U)) {
+          return -1; // invalid or non-shared
+      }
+  }
 
-  //check mapping exists and shared
-  if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_S) == 0  || (*pte & PTE_U) == 0 ) //should we remove PTE_U?
-    return -1;
+  uvmunmap(p->pagetable, start, npages, 0);
 
-  //page align addr?
-  
-  uvmunmap(p->pagetable, addr , size / PGSIZE, 0); 
+  // Update sz only if we unmapped pages at the top of the address space
+  acquire(&p->lock); // acquire the lock for the process
+  if(p->sz <= end){
+      p->sz = start;
+  }
+  release(&p->lock); // release the lock for the process
 
-
+  return 0;
 }
