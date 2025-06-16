@@ -89,3 +89,16 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_map_shared(void)
+{
+  uint64 src_pid, dst_pid, src_va ,size ;
+  struct proc *src_proc, *dst_proc;
+  argint(0, (int*)&src_pid);
+  argint(1, (int*)&dst_pid);
+  argint(2, (int*)&src_va);
+  argint(3, (int*)&size);
+
+  //TODO complete
+}
