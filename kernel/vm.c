@@ -449,7 +449,8 @@ param:
     size is the number of bytes to map 
 returns:
   the virtual address in the destination process where that corresponds to the source address in the source
-  process
+  process if successful
+  -1 if the mapping fails or the source address is invalid
 */
 uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size){
   uint64 dst_va = 0;
@@ -459,7 +460,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
 
   // Check if the source virtual address is valid and size is non-zero
   if(src_va >= MAXVA || size == 0)
-    return 0;
+    return -1;
 
   // find the address of the PTE in the source process page table
   acquire(&src_proc->lock); // acquire the lock for the source process
@@ -468,7 +469,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
 
   // Check if the PTE exists and is valid
   if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
-    return 0;
+    return -1;
 
   // TODO: check if we need to rounddown pte or pa 
 
@@ -488,7 +489,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){//check if the if statement is needed
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 0);
     release(&dst_proc->lock); // release the lock if mapping fails
-    return 0;
+    return -1;
   }
   dst_proc->sz = new_size; // update the size of the destination process
   release(&dst_proc->lock); // release the lock
