@@ -95,10 +95,20 @@ sys_map_shared(void)
 {
   uint64 src_pid, dst_pid, src_va ,size ;
   struct proc *src_proc, *dst_proc;
+
   argint(0, (int*)&src_pid);
   argint(1, (int*)&dst_pid);
   argint(2, (int*)&src_va);
   argint(3, (int*)&size);
 
-  //TODO complete
+  src_proc = getproc(src_pid);
+  if(src_proc == -1) {
+    return -1; // source process not found
+  }
+  dst_proc = getproc(dst_pid);
+  if(dst_proc == -1) {
+    return -1; // destination process not found
+  }
+
+  return map_shared_pages(src_proc, dst_proc, src_va, size);
 }

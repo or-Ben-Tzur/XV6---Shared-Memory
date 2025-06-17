@@ -681,3 +681,22 @@ procdump(void)
     printf("\n");
   }
 }
+
+// Get a process by pid.
+// Returns a pointer to the process, or -1 if not found.
+struct proc*
+get_proc(int pid)
+{
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->pid == pid){
+      release(&p->lock);
+      return p;
+    }
+    release(&p->lock);
+  }
+
+  return -1;
+}
