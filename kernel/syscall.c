@@ -128,8 +128,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_map_shared] sys_map_shared,
-[SYS_unmap_shared] sys_unmap_shared,
+[SYS_map_shared_pages] sys_map_shared,
+[SYS_unmap_shared_pages] sys_unmap_shared,
 };
 
 void

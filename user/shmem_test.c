@@ -1,5 +1,6 @@
-#include "types.h"
+#include "kernel/types.h"
 #include "user.h"
+
 
 int
 main(int argc, char *argv[])
@@ -10,7 +11,7 @@ main(int argc, char *argv[])
     int parent_pid = getpid();
     if(fork() == 0) {
         printf("1. Child process size before shared mapping: %d\n", sbrk(0));
-        uint64 va = map_shared_pages(parent_pid, getpid(), (uint64)shmem_text, sizeof(shmem_text));
+        char* va = map_shared_pages(parent_pid, getpid(), shmem_text, sizeof(shmem_text));
         printf("2. Child process size after shared mapping: %d\n",sbrk(0));
         strcpy(va, "Hello daddy");
         if (unmap_shared_pages(getpid(), va, sizeof(shmem_text)) < 0) {
