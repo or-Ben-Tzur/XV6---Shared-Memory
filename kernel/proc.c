@@ -698,5 +698,5 @@ get_proc(int pid)
     release(&p->lock);
   }
 
-  return -1;
+  return 0;
 }

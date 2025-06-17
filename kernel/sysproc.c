@@ -101,12 +101,12 @@ sys_map_shared(void)
   argint(2, (int*)&src_va);
   argint(3, (int*)&size);
 
-  src_proc = getproc(src_pid);
-  if(src_proc == -1) {
+  src_proc = get_proc(src_pid);
+  if(!src_proc) {
     return -1; // source process not found
   }
-  dst_proc = getproc(dst_pid);
-  if(dst_proc == -1) {
+  dst_proc = get_proc(dst_pid);
+  if(!dst_proc) {
     return -1; // destination process not found
   }
 
@@ -123,8 +123,8 @@ sys_unmap_shared(void)
   argint(1, (int*)&addr);
   argint(2, (int*)&size);
 
-  p = getproc(pid);
-  if(p == -1) {
+  p = get_proc(pid);
+  if(!p) {
     return -1; // process not found
   }
 

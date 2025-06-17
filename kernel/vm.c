@@ -5,6 +5,7 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
 #include "proc.h" 
 
 // this file contains the code that manages virtual memory
@@ -453,7 +454,6 @@ returns:
   -1 if the mapping fails or the source address is invalid
 */
 uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src_va, uint64 size){
-  uint64 dst_va = 0;
   pte_t *pte;
   uint64 pa , old_size, new_size, dst_va;
   int perms;//combine src permissions and PTE_S
