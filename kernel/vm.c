@@ -458,20 +458,26 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   uint64 pa , old_size, new_size, dst_va;
   int perms;//combine src permissions and PTE_S
 
+
   // Check if the source virtual address is valid and size is non-zero
-  if(src_va >= MAXVA || size == 0)
+  if(src_va >= MAXVA || size == 0){
+    printf("map_shared_pages: Invalid source address or size\n");
     return -1;
+  }
+
+  uint64 round_va = PGROUNDDOWN(src_va);
+  uint64 offset = src_va - round_va;
 
   // find the address of the PTE in the source process page table
   acquire(&src_proc->lock); // acquire the lock for the source process
-  pte = walk(src_proc->pagetable, src_va, 0);
+  pte = walk(src_proc->pagetable, round_va, 0);
   release(&src_proc->lock); // release the lock for the source process
 
   // Check if the PTE exists and is valid
-  if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
+  if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0){
+    printf("map_shared_pages: Invalid source address or PTE not valid\n");
     return -1;
-
-  // TODO: check if we need to rounddown pte or pa 
+  }
 
   perms = PTE_FLAGS(*pte) & (PTE_R | PTE_W | PTE_X | PTE_U); // get the permissions from the source PTE
   perms = perms | PTE_S; // add the shared flag
@@ -489,14 +495,13 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){//check if the if statement is needed
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 0);
     release(&dst_proc->lock); // release the lock if mapping fails
+    printf("map_shared_pages: Failed to map shared pages\n");
     return -1;
   }
   dst_proc->sz = new_size; // update the size of the destination process
   release(&dst_proc->lock); // release the lock
 
-  
-
-  return dst_va;
+  return dst_va + offset; // return the virtual address in the destination process
 }
 
 

@@ -9,9 +9,16 @@ main(int argc, char *argv[])
     strcpy(shmem_text, "Hello from shared memory!");
     printf("%s\n", shmem_text);
     int parent_pid = getpid();
+    
+    printf("text address: %p\n", shmem_text);
     if(fork() == 0) {
+        printf("text address: %p\n", shmem_text);
         printf("1. Child process size before shared mapping: %d\n", sbrk(0));
         char* va = map_shared_pages(parent_pid, getpid(), shmem_text, sizeof(shmem_text));
+        if (va == (char*)-1) {
+            printf("Error mapping shared memory\n");
+            exit(1);
+        }
         printf("2. Child process size after shared mapping: %d\n",sbrk(0));
         strcpy(va, "Hello daddy");
         if (unmap_shared_pages(getpid(), va, sizeof(shmem_text)) < 0) {
