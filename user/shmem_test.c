@@ -14,7 +14,7 @@ main(int argc, char *argv[])
     if(fork() == 0) {
         printf("text address: %p\n", shmem_text);
         printf("1. Child process size before shared mapping: %d\n", sbrk(0));
-        char* va = map_shared_pages(parent_pid, getpid(), shmem_text, sizeof(shmem_text));
+        char* va = map_shared_pages(parent_pid, shmem_text, sizeof(shmem_text));
         if (va == (char*)-1) {
             printf("Error mapping shared memory\n");
             exit(1);

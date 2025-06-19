@@ -22,7 +22,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-void* map_shared_pages(int src_pid, int dst_pid, void* src_va, int size);
+void* map_shared_pages(int, void*, int );
 int unmap_shared_pages(int pid, void* addr, int size);
 
 // ulib.c

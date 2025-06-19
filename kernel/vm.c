@@ -468,8 +468,8 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   uint64 round_va = PGROUNDDOWN(src_va);
   uint64 offset = src_va - round_va;
 
+  printf("map_shared_pages: src_va: %p, size: %d\n", src_va, size);
   // find the address of the PTE in the source process page table
-  acquire(&src_proc->lock); // acquire the lock for the source process
   pte = walk(src_proc->pagetable, round_va, 0);
   release(&src_proc->lock); // release the lock for the source process
 
@@ -490,8 +490,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   new_size = old_size + size;
   dst_va = old_size;
 
-  //aquire the lock for the destination process
-  acquire(&dst_proc->lock);
+  acquire(&dst_proc->lock); // acquire the lock for the destination process
   if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){//check if the if statement is needed
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 0);
     release(&dst_proc->lock); // release the lock if mapping fails
@@ -519,23 +518,24 @@ uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size) {
   uint64 end = PGROUNDUP(addr + size);
   int npages = (end - start) / PGSIZE;
 
+  // check if the address is in the end of the address space
+  printf("unmap_shared_pages: start: %p, end: %p, npages: %d\n", start, end, npages);
   for(uint64 a = start; a < end; a += PGSIZE){
-      acquire(&p->lock); // acquire the lock for the process
-      pte_t *pte = walk(p->pagetable, a, 0);
+    pte_t *pte = walk(p->pagetable, a, 0);
+    if(!pte || !(*pte & PTE_V) || !(*pte & PTE_S) || !(*pte & PTE_U)) {
+      printf("unmap_shared_pages: Invalid shared pages to unmap at %p\n", a);
       release(&p->lock); // release the lock for the process
-      if(!pte || !(*pte & PTE_V) || !(*pte & PTE_S) || !(*pte & PTE_U)) {
-          return -1; // invalid or non-shared
-      }
+      return -1; // invalid or non-shared
+    }
   }
+  printf("unmap_shared_pages: Valid shared pages to unmap\n");
 
   uvmunmap(p->pagetable, start, npages, 0);
 
+  printf("unmap_shared_pages: Unmapped shared pages from %p to %p\n", start, end);
   // Update sz only if we unmapped pages at the top of the address space
-  acquire(&p->lock); // acquire the lock for the process
-  if(p->sz <= end){
-      p->sz = start;
-  }
+  p->sz = start;
   release(&p->lock); // release the lock for the process
-
+  printf("unmap_shared_pages: Process size updated to %d\n", p->sz);
   return 0;
 }
