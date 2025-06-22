@@ -685,11 +685,14 @@ procdump(void)
 // Get a process by pid.
 // Returns a pointer to the process, or -1 if not found.
 struct proc*
-get_proc(int pid)
+get_proc(int pid , struct proc *skip)
 {
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++){
+    if (p == skip) {
+      continue; // Skip the process that is locked
+    }
     acquire(&p->lock);
     if(p->pid == pid){
       return p;

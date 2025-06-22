@@ -458,7 +458,8 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   uint64 pa , old_size, new_size, dst_va;
   int perms;//combine src permissions and PTE_S
 
-
+  printf("map_shared_pages: src_proc: %d, dst_proc: %d, src_va: %p, size: %d\n", src_proc->pid, dst_proc->pid, src_va, size);
+  
   // Check if the source virtual address is valid and size is non-zero
   if(src_va >= MAXVA || size == 0){
     printf("map_shared_pages: Invalid source address or size\n");

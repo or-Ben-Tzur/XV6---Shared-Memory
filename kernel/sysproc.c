@@ -93,19 +93,23 @@ sys_uptime(void)
 uint64
 sys_map_shared(void)
 {
-  uint64 src_pid, src_va ,size ;
+  uint64 src_pid, dst_pid ,src_va ,size ;
   struct proc *src_proc, *dst_proc;
 
   argaddr(0, &src_pid);
-  argaddr(1, &src_va);
-  argaddr(2, &size);
+  argaddr(1, &dst_pid);
+  argaddr(2, &src_va);
+  argaddr(3, &size);
 
-  src_proc = get_proc(src_pid);
-  if(!src_proc) {
+  dst_proc = get_proc(dst_pid,0);
+  if(!dst_proc) {
     return -1; // source process not found
   }
 
-  dst_proc = myproc(); // destination process is the current process
+  src_proc = get_proc(src_pid, dst_proc);
+  if(!src_proc) {
+    return -1; // destination process not found
+  }
 
   return map_shared_pages(src_proc, dst_proc, src_va, size);
 }
@@ -120,7 +124,7 @@ sys_unmap_shared(void)
   argaddr(1, &addr);
   argaddr(2, &size);
 
-  p = get_proc(pid);
+  p = get_proc(pid,0);
   if(!p) {
     return -1; // process not found
   }
