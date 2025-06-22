@@ -86,7 +86,7 @@ main(int argc, char *argv[])
 
             // Skip to the next slot past this message
             addr += 4 + existing_msg_len;
-            addr = (char*)((addr + 3) & ~3);  // align again
+            addr = (char*)(((void*)(addr + 3)) & ~(void*)3);
         }
 
     }
