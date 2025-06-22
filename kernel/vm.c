@@ -468,7 +468,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   uint64 round_va = PGROUNDDOWN(src_va);
   uint64 offset = src_va - round_va;
 
-  printf("map_shared_pages: src_va: %p, size: %d\n", src_va, size);
+  printf("map_shared_pages: src_va: %p, round_va: %p ,size: %d\n", src_va,round_va, size);
   // find the address of the PTE in the source process page table
   pte = walk(src_proc->pagetable, round_va, 0);
   release(&src_proc->lock); // release the lock for the source process
@@ -485,7 +485,9 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   // Get the physical address from the PTE
   pa = PTE2PA(*pte);
 
+  printf("map_shared_pages: size before rounding: %d\n", size);
   size = PGROUNDUP(size);
+  printf("map_shared_pages: size after rounding: %d\n", size);
   old_size = dst_proc->sz;
   new_size = old_size + size;
   dst_va = old_size;

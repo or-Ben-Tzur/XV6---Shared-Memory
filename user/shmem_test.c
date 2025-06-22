@@ -5,7 +5,7 @@
 int
 main(int argc, char *argv[])
 {
-    char shmem_text[30];
+    char* shmem_text = (char*) malloc(5000);
     strcpy(shmem_text, "Hello from shared memory!");
     printf("%s\n", shmem_text);
     int parent_pid = getpid();
@@ -14,14 +14,14 @@ main(int argc, char *argv[])
     if(fork() == 0) {
         printf("text address: %p\n", shmem_text);
         printf("1. Child process size before shared mapping: %d\n", sbrk(0));
-        char* va = map_shared_pages(parent_pid, shmem_text, sizeof(shmem_text));
+        char* va = map_shared_pages(parent_pid, shmem_text, 5000);
         if (va == (char*)-1) {
             printf("Error mapping shared memory\n");
             exit(1);
         }
         printf("2. Child process size after shared mapping: %d\n",sbrk(0));
         strcpy(va, "Hello daddy");
-        if (unmap_shared_pages(getpid(), va, sizeof(shmem_text)) < 0) {
+        if (unmap_shared_pages(getpid(), va, 5000) < 0) {
             printf("Error unmapping shared memory\n");
             exit(1);
         }
