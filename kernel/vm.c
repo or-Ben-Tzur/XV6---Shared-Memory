@@ -459,7 +459,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   int perms;//combine src permissions and PTE_S
 
   printf("map_shared_pages: src_proc: %d, dst_proc: %d, src_va: %p, size: %d\n", src_proc->pid, dst_proc->pid, src_va, size);
-  
+
   // Check if the source virtual address is valid and size is non-zero
   if(src_va >= MAXVA || size == 0){
     printf("map_shared_pages: Invalid source address or size\n");
@@ -493,7 +493,6 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   new_size = old_size + size;
   dst_va = old_size;
 
-  acquire(&dst_proc->lock); // acquire the lock for the destination process
   if(mappages(dst_proc->pagetable, dst_va, size, pa, perms) != 0){//check if the if statement is needed
     uvmunmap(dst_proc->pagetable, dst_va, size / PGSIZE, 0);
     release(&dst_proc->lock); // release the lock if mapping fails
