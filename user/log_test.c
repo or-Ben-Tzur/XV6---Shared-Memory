@@ -1,95 +1,90 @@
+#include "kernel/types.h"
 #include "user.h"
 #define CHILD_PROCESSES 4
 #define PGSIZE 4096
-#define BUFF_SIZE 1024
-int
-main(int argc, char *argv[])
-{
-    int *start = (int*)malloc(sizeof(int));
-    *start = 0;
-    void* addrs[CHILD_PROCESSES];
-    void* shared_buf = malloc(BUFF_SIZE);
-    void* start_va;
-    void* addrs_va;
-    char* addr;
-    void* buffer;
-    int msg_len;
-    
-    int pid, index;
-    int parent_pid = getpid();
-    if (shared_buf == 0) {
-        printf("failed to malloc\n");
+#define BUFF_SIZE 4096
+
+int main(int argc, char *argv[]) {
+    char* buffer = malloc(BUFF_SIZE);
+    char* va=0;
+    if (!buffer) {
+        printf("malloc failed\n");
         exit(1);
     }
-    for(int i=0;i<CHILD_PROCESSES;i++){
-        memset(addrs[i], 0, sizeof(void*));
-    }
-    memset(shared_buf, 0, BUFF_SIZE);
 
-    index = -1; //for parent process
-    for(int i = 0; i < CHILD_PROCESSES; i++) {
-        pid = fork();
+    memset(buffer, 0, BUFF_SIZE);
+    int parent_pid = getpid();
+    int index = -1;
+    for (int i = 0; i < CHILD_PROCESSES; i++) {
+        int pid = fork();
         if (pid < 0) {
             printf("fork failed\n");
             exit(1);
-        } else if (pid == 0) { // child process
+        } else if (pid == 0) { //child
             index = i;
-            start_va = map_shared_pages(parent_pid,getpid(), start, sizeof(int));
-            if (start_va == (void*)-1) {
-                printf("Child process failed to map shared pages\n");
+            va = map_shared_pages(parent_pid, getpid(), buffer, BUFF_SIZE);
+            if (va == (char*) -1) {
+                printf("child %d failed to map\n", i);
                 exit(1);
             }
-            addrs_va = map_shared_pages(parent_pid, getpid(), addrs, sizeof(void*) * CHILD_PROCESSES);
-            if (addrs_va == (void*)-1) {
-                printf("Child process failed to map shared pages for addresses\n");
-                exit(1);
-            }
-            break; // exit the loop in the child process
-        } else { // parent process
-            addrs[i] = map_shared_pages(parent_pid ,pid, shared_buf, BUFF_SIZE);
-            if (addrs[i] == (void*)-1) {
-                printf("Parent process failed to map shared pages for child %d\n", i);
-                exit(1);
-            }
+            break;
         }
     }
 
-    if (index == -1) { // parent process
-        *start = 1;
+    if (index == -1) { // parent
+        char* addr = buffer;
+        int header=0;
+        int idx=0;
+        int msg_len=0;
+        do{
+            header = *(int*)addr;
+            if (header == 0){
+                sleep(1); // No more messages
+                continue;
+            } 
+            idx = header & 0xFFFF;
+            msg_len = (header >> 16) & 0xFFFF;
+  
+            if ((addr - buffer) + 4 + msg_len > BUFF_SIZE) break; // prevent overflow
+
+            printf("Message from child %d: ", idx);
+            for (int i = 0; i < msg_len; i++) {
+                printf("%c", addr[4 + i]);
+            }
+            printf("\n");
+
+            addr = addr + 4 + msg_len;
+            addr = (char*)(((uint64)(addr + 3)) & ~3); // 4-byte alignment
+
+        } while ((addr - buffer) + 4 + msg_len <= BUFF_SIZE);
         
-    } else { // child process
-        while (*start == 0) {
-            // wait for the parent to set start
-            sleep(0.5);
+        sleep(3); // wait for children to finish writing
+        for (int i = 0; i < CHILD_PROCESSES; i++) {
+            wait(0);
         }
-        printf("Child %d started with address %p\n", index, addrs[index]);
-    }
-    
-    if (index == -1){
-        // TODO wait for all child processes to finish
-    } else {
-        buffer = (void*)addrs[index];
-        addr = (char*)buffer;
-        msg_len = 1 + index;
-        while ((void*)(addr + 4 + msg_len) <= (void*)(buffer + BUFF_SIZE)) {
-            // Try to write header atomically if slot is empty (0)
+        printf("All messages printed\n");
+        
+
+    } else { //child
+
+        char* addr = va;
+        int msg_len = index +1;
+        while ((addr - va) + 4 + msg_len < BUFF_SIZE) {
             if (__sync_val_compare_and_swap((int*)addr, 0, (index & 0xFFFF) | (msg_len << 16)) == 0) {
-                // Header written successfully. Now write message
-                char ch = 'a' + index;  // message character
+                char ch = 'a' + index;
                 for (int i = 0; i < msg_len; i++) {
                     addr[4 + i] = ch;
                 }
-            } 
-            // Slot was taken — read the existing header
-            int existing = *(int*)addr;
-            int existing_msg_len = (existing >> 16) & 0xFFFF;
-
-            // Skip to the next slot past this message
-            addr += 4 + existing_msg_len;
-            addr = (char*)(((void*)(addr + 3)) & ~(void*)3);
+            }
+            int header = *(int*)addr;
+            int existing_len = (header >> 16) & 0xFFFF;
+            addr += 4 + existing_len;
+            addr = (char*)(((uint64)(addr + 3)) & ~3); // align
+            sleep(1);
         }
-
+        
+        sleep(index*2);
+        printf("Child %d finished writing messages\n", index);
     }
-
+    exit(0);
 }
-    
