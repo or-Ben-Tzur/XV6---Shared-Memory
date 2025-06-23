@@ -444,8 +444,8 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 
 /*
 param:
-    src_proc is the source process
-    dst_proc is the destination process
+    src_proc - source process, already locked
+    dst_proc - destination process, already locked
     src_va is the virtual address in the source process
     size is the number of bytes to map 
 returns:
@@ -458,7 +458,6 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   uint64 pa , old_size, new_size, dst_va;
   int perms;//combine src permissions and PTE_S
 
-  printf("map_shared_pages: src_proc: %d, dst_proc: %d, src_va: %p, size: %d\n", src_proc->pid, dst_proc->pid, src_va, size);
 
   // Check if the source virtual address is valid and size is non-zero
   if(src_va >= MAXVA || size == 0){
@@ -469,7 +468,6 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   uint64 round_va = PGROUNDDOWN(src_va);
   uint64 offset = src_va - round_va;
 
-  printf("map_shared_pages: src_va: %p, round_va: %p ,size: %d\n", src_va,round_va, size);
   // find the address of the PTE in the source process page table
   pte = walk(src_proc->pagetable, round_va, 0);
   release(&src_proc->lock); // release the lock for the source process
@@ -486,9 +484,7 @@ uint64 map_shared_pages(struct proc* src_proc, struct proc* dst_proc, uint64 src
   // Get the physical address from the PTE
   pa = PTE2PA(*pte);
 
-  printf("map_shared_pages: size before rounding: %d\n", size);
   size = PGROUNDUP(size);
-  printf("map_shared_pages: size after rounding: %d\n", size);
   old_size = dst_proc->sz;
   new_size = old_size + size;
   dst_va = old_size;
@@ -521,7 +517,6 @@ uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size) {
   int npages = (end - start) / PGSIZE;
 
   // check if the address is in the end of the address space
-  printf("unmap_shared_pages: start: %p, end: %p, npages: %d\n", start, end, npages);
   for(uint64 a = start; a < end; a += PGSIZE){
     pte_t *pte = walk(p->pagetable, a, 0);
     if(!pte || !(*pte & PTE_V) || !(*pte & PTE_S) || !(*pte & PTE_U)) {
@@ -530,14 +525,11 @@ uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size) {
       return -1; // invalid or non-shared
     }
   }
-  printf("unmap_shared_pages: Valid shared pages to unmap\n");
 
   uvmunmap(p->pagetable, start, npages, 0);
 
-  printf("unmap_shared_pages: Unmapped shared pages from %p to %p\n", start, end);
   // Update sz only if we unmapped pages at the top of the address space
   p->sz = start;
   release(&p->lock); // release the lock for the process
-  printf("unmap_shared_pages: Process size updated to %d\n", p->sz);
   return 0;
 }
