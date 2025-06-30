@@ -517,6 +517,11 @@ uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size) {
   int npages = (end - start) / PGSIZE;
 
   // check if the address is in the end of the address space
+  if (end != p->sz) {
+    printf("unmap_shared_pages: Attempt to unmap non-terminal pages\n");
+    return -1;
+  }
+
   for(uint64 a = start; a < end; a += PGSIZE){
     pte_t *pte = walk(p->pagetable, a, 0);
     if(!pte || !(*pte & PTE_V) || !(*pte & PTE_S) || !(*pte & PTE_U)) {
@@ -529,6 +534,7 @@ uint64 unmap_shared_pages(struct proc* p, uint64 addr, uint64 size) {
   uvmunmap(p->pagetable, start, npages, 0);
 
   // Update sz only if we unmapped pages at the top of the address space
+
   p->sz = start;
   release(&p->lock); // release the lock for the process
   return 0;
